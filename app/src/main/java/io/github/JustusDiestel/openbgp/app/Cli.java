@@ -6,8 +6,6 @@ import java.nio.file.Path;
 
 public final class Cli {
 
-    final int RECORD_SIZE = 16;
-
 
 
     public int run(String[] args) {
@@ -42,17 +40,45 @@ public final class Cli {
 
         long records = 0;
         try(var in = Files.newInputStream(mrt)){
-            byte[] buffer = new byte[RECORD_SIZE];
+
+            byte[] header = new byte[12];
 
             while(true) {
-                int read = in.read(buffer);
+                int read = in.read(header);
                 if(read == -1){
                     break;
                 }
-                if(read<RECORD_SIZE){
+                if(read < 12){
+                    System.err.println("Truncated MRT header");
+                    break;
+                }
+                int timestamp =
+                        ((header[0] & 0xff) << 24) |
+                                ((header[1] & 0xff) << 16) |
+                                ((header[2] & 0xff) << 8)  |
+                                (header[3] & 0xff);
+
+                int type =
+                        ((header[4] & 0xff) << 8) |
+                                (header[5] & 0xff);
+
+                int subtype =
+                        ((header[6] & 0xff) << 8) |
+                                (header[7] & 0xff);
+
+                int length =
+                        ((header[8] & 0xff) << 24) |
+                                ((header[9] & 0xff) << 16) |
+                                ((header[10] & 0xff) << 8) |
+                                (header[11] & 0xff);
+
+                long skipped = in.skip(length);
+                if (skipped < length) {
+                    System.err.println("Truncated MRT payload");
                     break;
                 }
                 records++;
+
             }
         }catch(Exception e){
             System.err.println("Failed to read MRT records: " + e.getMessage());
