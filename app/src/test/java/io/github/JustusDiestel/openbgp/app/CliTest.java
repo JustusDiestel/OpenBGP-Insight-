@@ -24,7 +24,7 @@ public class CliTest {
     @Test
     void existingFileIsAccepted() throws Exception {
         Path tmp = Files.createTempFile("openbgp", ".mrt");
-        Files.writeString(tmp, "x"); // wichtig!
+        Files.write(tmp, new byte[]{1, 2, 3, 4});
 
         int code = new Cli().run(new String[]{
                 "analyze", "--mrt", tmp.toString(), "--out", "out.json"

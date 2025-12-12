@@ -1,9 +1,14 @@
 package io.github.JustusDiestel.openbgp.app;
 
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
 public final class Cli {
+
+    final int RECORD_SIZE = 16;
+
+
 
     public int run(String[] args) {
         if (args.length == 0 || has(args, "--help") || has(args, "-h")) {
@@ -35,10 +40,25 @@ public final class Cli {
         System.out.println("MRT file: " + mrt.toAbsolutePath());
         System.out.println("Output : " + out.toAbsolutePath());
 
-        if (!Files.isRegularFile(mrt)) {
-            System.err.println("MRT file not found: " + mrt.toAbsolutePath());
+        long records = 0;
+        try(var in = Files.newInputStream(mrt)){
+            byte[] buffer = new byte[RECORD_SIZE];
+
+            while(true) {
+                int read = in.read(buffer);
+                if(read == -1){
+                    break;
+                }
+                if(read<RECORD_SIZE){
+                    break;
+                }
+                records++;
+            }
+        }catch(Exception e){
+            System.err.println("Failed to read MRT records: " + e.getMessage());
             return 3;
         }
+        System.out.println("Records read (dummy): " + records);
 
 
         return 0;
