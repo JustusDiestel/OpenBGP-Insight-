@@ -38,7 +38,10 @@ public final class Cli {
         System.out.println("MRT file: " + mrt.toAbsolutePath());
         System.out.println("Output : " + out.toAbsolutePath());
 
-        long records = 0;
+        long totalRecords = 0;
+        long tableDumpV2Records = 0;
+        long ribEntries = 0;
+
         try(var in = Files.newInputStream(mrt)){
 
             byte[] header = new byte[12];
@@ -72,19 +75,43 @@ public final class Cli {
                                 ((header[10] & 0xff) << 8) |
                                 (header[11] & 0xff);
 
-                long skipped = in.skip(length);
-                if (skipped < length) {
-                    System.err.println("Truncated MRT payload");
-                    break;
+
+
+
+                if (type == 13) { // TABLE_DUMP_V2
+                    byte[] payload = new byte[length];
+                    int readPayload = in.read(payload);
+                    if (readPayload < length) {
+                        System.err.println("Truncated MRT payload");
+                        break;
+                    }
+
+                    if (subtype == 2 || subtype == 4) { // RIB IPv4/IPv6 Unicast
+                        int entryCount =
+                                ((payload[0] & 0xff) << 8) |
+                                        (payload[1] & 0xff);
+
+                        tableDumpV2Records++;
+                        totalRecords++;
+                        ribEntries += entryCount;
+                    }
+                } else {
+                    long skipped = in.skip(length);
+                    if (skipped < length) {
+                        System.err.println("Truncated MRT payload");
+                        break;
+                    }
+                    totalRecords++;
                 }
-                records++;
 
             }
         }catch(Exception e){
             System.err.println("Failed to read MRT records: " + e.getMessage());
             return 3;
         }
-        System.out.println("Records read (dummy): " + records);
+        System.out.println("MRT records total: " + totalRecords);
+        System.out.println("TABLE_DUMP_V2 records: " + tableDumpV2Records);
+        System.out.println("RIB entries (sum): " + ribEntries);
 
 
         return 0;
